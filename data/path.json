@@ -1,0 +1,33 @@
+{
+    "environment": "http://akode.valensas.com/api",
+    "auth": {
+        "email": {
+            "status": "/auth/email/status",
+            "otp": {
+                "self": "/auth/email/otp",
+                "send": "/auth/email/otp/send",
+                "verify": "/auth/email/otp/verify"
+            }
+        },
+        "phone": {
+            "status": "/auth/phone/status",
+            "otp": {
+                "self": "/auth/phone/otp",
+                "send": "/auth/phone/otp/send",
+                "verify": "/auth/phone/otp/verify"
+            }
+        },
+        "user": {
+            "signup": "/auth/user/signup"
+        },
+        "password": {
+            "verify": "/auth/password/verify"
+        },
+        "oauth": {
+            "token": "/auth/oauth/token"
+        },
+        "device": {
+            "register": "/auth/device/register"
+        }
+    }
+}

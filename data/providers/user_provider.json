@@ -1,0 +1,424 @@
+{
+    "name": "User Provider",
+    "initial": "check_if_user_exists",
+    "steps": [
+        {
+            "type": "pass",
+            "key": "check_if_user_exists",
+            "next": "password_verification"
+        },
+        {
+            "type": "pass",
+            "key": "start_signup_process",
+            "next": "check_email_availability"
+        },
+        {
+            "type": "pass",
+            "key": "start_login_process",
+            "next": "send_phone_otp_for_device_registration"
+        },
+        {
+            "type": "manifold",
+            "key": "token",
+            "next": [
+                {
+                    "step": "android_token",
+                    "when": "$feed.os",
+                    "equals": "Android"
+                },
+                {
+                    "step": "ios_token",
+                    "when": "$feed.os",
+                    "equals": "Ios"
+                }
+            ]
+        },
+        {
+            "type": "http",
+            "key": "password_verification",
+            "method": "POST",
+            "url": "$path.auth.password.verify",
+            "data": {
+                "login": "$feed.email",
+                "password": "$feed.password"
+            },
+            "next": [
+                {
+                    "step": "start_signup_process",
+                    "when": "$res.status",
+                    "not_equals": 200
+                },
+                {
+                    "step": "start_login_process",
+                    "when": "$json.verified",
+                    "equals": true
+                }
+            ]
+        },
+        { 
+            "type": "http",
+            "key": "send_phone_otp_for_device_registration",
+            "method": "POST", 
+            "url": "$path.auth.phone.otp.send", 
+            "data": { 
+                "phone": "$feed.phone", 
+                "device_id": "tosla-server-tests" 
+            },
+            "next": [
+                {
+                    "step": "get_code_for_phone_otp_for_device_registration",
+                    "when": "$res.status",
+                    "equals": 200
+                }
+            ] 
+        },
+        { 
+            "type": "http",
+            "key": "get_code_for_phone_otp_for_device_registration",
+            "method": "GET", 
+            "url": "$path.auth.phone.otp.self", 
+            "params": { 
+                "phone": "$feed.phone" 
+            }, 
+            "keep": [
+                {
+                    "this": "$json.code", 
+                    "in": "phone_otp" 
+                }
+            ],
+            "next": [
+                {
+                    "step": "verify_phone_otp_for_device_registration",
+                    "when": "$res.status",
+                    "equals": 200
+                }
+            ]
+        },
+        { 
+            "type": "http",
+            "key": "verify_phone_otp_for_device_registration",
+            "method": "POST", 
+            "url": "$path.auth.phone.otp.verify", 
+            "data": { 
+                "phone": "$feed.phone", 
+                "otp": "$flow.phone_otp" 
+            }, 
+            "keep": [
+                {
+                    "this": "$json.code", 
+                    "in": "phone_code" 
+                }
+            ],
+            "next": [
+                {
+                    "step": "device_registration",
+                    "when": "$res.status",
+                    "equals": 200
+                }
+            ]
+        },
+        {
+            "type": "http",
+            "key": "device_registration",
+            "method": "POST",
+            "url": "$path.auth.device.register",
+            "data": {
+                "emailAddress": "$feed.email",
+                "phoneNumber": "$feed.phone",
+                "phoneCode": "$flow.phone_code",
+                "deviceId": "tosla-server-tests",
+                "password": "$feed.password",
+                "notificationToken": null,
+                "system": "$feed.os"
+            },
+            "keep": [
+                {
+                    "this": "$json.passcode",
+                    "in": "passcode"
+                }
+            ],
+            "next": [
+                {
+                    "step": "token",
+                    "when": "$res.status",
+                    "equals": 200
+                }
+            ]
+        },
+        {
+            "type": "http",
+            "key": "android_token",
+            "method": "POST",
+            "url": "$path.auth.oauth.token",
+            "headers": {
+                "authorization": "Basic Y2xpZW50LWFuZHJvaWQ6c2VjcmV0Mg=="
+            },
+            "form": {
+                "username": "'tosla-server-tests|' + $feed.email",
+                "password": "$flow.passcode + '|' + $feed.password",
+                "client_id": "client-android",
+                "grant_type": "password"
+            },
+            "keep": [
+                {
+                    "this": "$json.accessToken",
+                    "in": "token"
+                }
+            ],
+            "next": [
+                {
+                    "step": "save_user",
+                    "when": "$res.status",
+                    "equals": 200
+                },
+                {
+                    "step": "break",
+                    "when": "$res.status",
+                    "not_equals": 200
+                }
+            ]
+        },
+        {
+            "type": "http",
+            "key": "ios_token",
+            "method": "POST",
+            "url": "$path.auth.oauth.token",
+            "headers": {
+                "authorization": "Basic Y2xpZW50LWlvczpzZWNyZXQx=="
+            },
+            "form": {
+                "username": "'tosla-server-tests|' + $feed.email",
+                "password": "$flow.passcode + '|' + $feed.password",
+                "client_id": "client-ios",
+                "grant_type": "password"
+            },
+            "keep": [
+                {
+                    "this": "$json.accessToken",
+                    "in": "token"
+                }
+            ],
+            "next": [
+                {
+                    "step": "save_user",
+                    "when": "$res.status",
+                    "equals": 200
+                },
+                {
+                    "step": "break",
+                    "when": "$res.status",
+                    "not_equals": 200
+                }
+            ]
+        },
+        { 
+            "type": "http",
+            "key": "check_email_availability",
+            "method": "GET", 
+            "url": "$path.auth.email.status", 
+            "querystring": { 
+                "emailAddress": "$feed.email" 
+            }, 
+            "next": [
+                {
+                    "step": "send_email_otp",
+                    "when": "$json.available", 
+                    "equals": true 
+                },
+                {
+                    "step": "save_user", 
+                    "when": "$json.available", 
+                    "equals": false 
+                }
+            ]
+        },
+        { 
+            "type": "http",
+            "key": "send_email_otp",
+            "method": "POST", 
+            "url": "$path.auth.email.otp.send", 
+            "data": { 
+                "email": "$feed.email" 
+            },
+            "next": [
+                {
+                    "step": "get_code_for_email_otp",
+                    "when": "$res.status",
+                    "equals": 200
+                }
+            ]
+        },
+        { 
+            "type": "http",
+            "key": "get_code_for_email_otp",
+            "method": "GET", 
+            "url": "$path.auth.email.otp.self", 
+            "querystring": { 
+                "email": "$feed.email" 
+            }, 
+            "keep": [
+                {
+                    "this": "$json.code", 
+                    "in": "email_otp" 
+                }
+            ],
+            "next": [
+                {
+                    "step": "verify_email_otp",
+                    "when": "$res.status",
+                    "equals": 200
+                }
+            ]
+        },
+        { 
+            "type": "http",
+            "key": "verify_email_otp",
+            "method": "POST", 
+            "url": "$path.auth.email.otp.verify", 
+            "data": { 
+                "email": "$feed.email", 
+                "otp": "$flow.email_otp" 
+            }, 
+            "keep": [
+                {
+                    "this": "$json.code", 
+                    "in": "email_code" 
+                }
+            ],
+            "next": [
+                {
+                    "step": "check_phone_availability",
+                    "when": "$res.status",
+                    "equals": 200
+                }
+            ]
+        },
+        {
+            "type": "http",
+            "key": "check_phone_availability",
+            "method": "GET",
+            "url": "$path.auth.phone.status",
+            "querystring": {
+                "phoneNumber": "$feed.phone"
+            },
+            "next": [
+                {
+                    "step": "send_phone_otp",
+                    "when": "$res.status",
+                    "equals": 200
+                }
+            ]
+        },
+        { 
+            "type": "http",
+            "key": "send_phone_otp",
+            "method": "POST", 
+            "url": "$path.auth.phone.otp.send", 
+            "data": { 
+                "phone": "$feed.phone", 
+                "device_id": "tosla-server-tests" 
+            },
+            "next": [
+                {
+                    "step": "get_code_for_phone_otp",
+                    "when": "$res.status",
+                    "equals": 200
+                }
+            ] 
+        },
+        { 
+            "type": "http",
+            "key": "get_code_for_phone_otp",
+            "method": "GET", 
+            "url": "$path.auth.phone.otp.self", 
+            "params": { 
+                "phone": "$feed.phone" 
+            }, 
+            "keep": [
+                {
+                    "this": "$json.code", 
+                    "in": "phone_otp" 
+                }
+            ],
+            "next": [
+                {
+                    "step": "verify_phone_otp",
+                    "when": "$res.status",
+                    "equals": 200
+                }
+            ]
+        },
+        { 
+            "type": "http",
+            "key": "verify_phone_otp",
+            "method": "POST", 
+            "url": "$path.auth.phone.otp.verify", 
+            "data": { 
+                "phone": "$feed.phone", 
+                "otp": "$flow.phone_otp" 
+            }, 
+            "keep": [
+                {
+                    "this": "$json.code", 
+                    "in": "phone_code" 
+                }
+            ],
+            "next": [
+                {
+                    "step": "signup",
+                    "when": "$res.status",
+                    "equals": 200
+                }
+            ]
+        },
+        { 
+            "type": "http",
+            "key": "signup",
+            "method": "POST", 
+            "url": "$path.auth.user.signup", 
+            "data": { 
+                "firstNames": "$feed.first_names", 
+                "lastName": "$feed.lastname", 
+                "emailAddress": "$feed.email", 
+                "emailCode": "$flow.email_code", 
+                "phoneNumber": "$feed.phone",
+                "phoneCode": "$flow.phone_code", 
+                "deviceId": "tosla-server-tests", 
+                "password": "$feed.password", 
+                "permissions": { 
+                    "kvkkTosla": false, 
+                    "kvkkAkbank": false, 
+                    "marketingTosla": false, 
+                    "marketingAkbank": false 
+                }, 
+                "system": "$feed.os" 
+            },
+            "next": [
+                {
+                    "step": "start_login_process",
+                    "when": "$res.status",
+                    "equals": 200
+                }
+            ] 
+        },
+        {
+            "type": "save",
+            "key": "save_user",
+            "package": {
+                "token": "$flow.token",
+                "email": "$feed.email",
+                "phone": "$feed.phone",
+                "password": "$feed.password",
+                "first_names": "$feed.first_names",
+                "lastname": "$feed.lastname",
+                "os": "$feed.os",
+                "permissions": { 
+                    "kvkkTosla": false, 
+                    "kvkkAkbank": false, 
+                    "marketingTosla": false, 
+                    "marketingAkbank": false 
+                }
+            }
+        }
+    ]
+}

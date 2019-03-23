@@ -1,0 +1,23 @@
+{
+    "name": "Money Requester",
+    "initial": "by_pass",
+    "steps": [
+        { 
+            "type": "manifold",
+            "key": "by_pass",
+            "print": "By Pass",
+            "next": [
+                {
+                    "step": "exit:success",
+                    "when": "$feed.amount",
+                    "equals": 750 
+                },
+                {
+                    "step": "exit:fail",
+                    "when": "$feed.amount",
+                    "equals": 751 
+                }
+            ]
+        }
+    ]
+}

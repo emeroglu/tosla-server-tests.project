@@ -1,0 +1,81 @@
+{
+    "index": 1,
+    "description": "Doğrulanmamış Müşteri kategorisindeki kullanıcı para isteme işlemi yapmak istedi.",
+    "initial": "set_ahmets_balance_to_zero",
+    "requirements": [
+        {
+            "type": "user",
+            "key": "ahmet",
+            "feed": {
+                "email": "ahmet2@valensas.com",
+                "phone": "+905300376465",
+                "password": "123456",
+                "first_names": "Ahmet",
+                "lastname": "Toslaoğulları",
+                "os": "Android"
+            }
+        },
+        {
+            "type": "user",
+            "key": "mehmet",
+            "feed": {
+                "email": "mehmet@valensas.com",
+                "phone": "+905339876910",
+                "password": "123456",
+                "first_names": "Mehmet",
+                "lastname": "Toslaoğulları",
+                "os": "Ios"
+            }
+        }
+    ],
+    "steps": [
+        {
+            "key": "set_ahmets_balance_to_zero",
+            "agent": "balance_setter",
+            "feed": {
+                "user": "$flow.ahmet",
+                "amount": 0
+            },
+            "on": {
+                "success": "set_mehmets_balance"
+            }
+        },
+        {
+            "key": "set_mehmets_balance",
+            "agent": "balance_setter",
+            "feed": {
+                "user": "$flow.mehmet",
+                "amount": 1000
+            },
+            "on": {
+                "success": "ahmet_requests_750_from_mehmet"
+            }
+        },
+        {
+            "key": "ahmet_requests_750_from_mehmet",
+            "agent": "money_requester",
+            "feed": {
+                "user": "$flow.mehmet",
+                "friend": "$flow.mehmet",
+                "amount": 750
+            },
+            "on": {
+                "success": "ahmet_requests_751_from_mehmet",
+                "fail": "break"
+            }
+        },
+        {
+            "key": "ahmet_requests_751_from_mehmet",
+            "agent": "money_requester",
+            "feed": {
+                "user": "$flow.ahmet",
+                "friend": "$flow.mehmet",
+                "amount": 751
+            },
+            "on": {
+                "success": "break",
+                "fail": "exit"
+            }
+        }
+    ]
+}

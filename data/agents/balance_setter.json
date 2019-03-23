@@ -1,0 +1,16 @@
+{
+    "name": "Balance Setter",
+    "initial": "by_pass",
+    "steps": [
+        { 
+            "type": "manifold",
+            "key": "by_pass",
+            "print": "By Pass",
+            "next": [
+                {
+                    "step": "exit:success" 
+                }
+            ]
+        }
+    ]
+}
